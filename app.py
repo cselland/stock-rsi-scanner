@@ -4,8 +4,6 @@ import pandas_ta as ta
 import pandas as pd
 import plotly.graph_objects as go
 
-yf.set_tz_cache(False) # Prevents some common timezone errors
-
 # 1. THE REFRESHED FUNCTION
 def get_data(ticker):
     ticker = ticker.strip()
