@@ -1,47 +1,47 @@
 import streamlit as st
 import yfinance as yf
 import pandas_ta as ta
+import pandas as pd
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="AlphaScanner", layout="wide")
-st.title("📈 AlphaScanner: Oversold/Overbought Dashboard")
-
-# User Input for Watchlist
-tickers = st.sidebar.text_input("Enter Tickers (comma separated)", "AAPL,TSLA,NVDA,SPY,QQQ").split(',')
-
+# 1. THE REFRESHED FUNCTION
 def get_data(ticker):
+    ticker = ticker.strip()
+    # Download data
     df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+    
+    if df.empty:
+        return None
+
+    # Calculate RSI
     df['RSI'] = ta.rsi(df['Close'], length=14)
-    macd = ta.macd(df['Close'])
-    df = df.join(macd)
+    
+    # Calculate MACD
+    macd = ta.macd(df['Close'], fast=12, slow=26, signal=9)
+    
+    # THE FIX: Safely combine the data
+    if macd is not None:
+        df = pd.concat([df, macd], axis=1)
+        
     return df
 
-# Main Dashboard Logic
-cols = st.columns(len(tickers))
+# 2. THE USER INTERFACE
+st.title("📈 AlphaScanner")
+tickers_input = st.sidebar.text_input("Enter Tickers (comma separated)", "AAPL,TSLA,NVDA")
+tickers = tickers_input.split(',')
 
-for i, ticker in enumerate(tickers):
-    ticker = ticker.strip()
+# 3. THE DISPLAY LOGIC
+for ticker in tickers:
     data = get_data(ticker)
-    current_rsi = data['RSI'].iloc[-1]
     
-    # Determine Status Color
-    if current_rsi < 35:
-        color = "green"
-        status = "Oversold (Buy Zone)"
-    elif current_rsi > 65:
-        color = "red"
-        status = "Overbought (Sell Zone)"
-    else:
-        color = "white"
-        status = "Neutral"
-
-    with st.container():
-        st.subheader(f"{ticker}")
-        st.metric("Current RSI", f"{current_rsi:.2f}", delta_color="normal")
-        st.markdown(f"Status: :{color}[{status}]")
+    if data is not None and 'RSI' in data.columns:
+        current_rsi = data['RSI'].iloc[-1]
+        st.subheader(f"Analysis for {ticker}")
+        st.write(f"Current RSI: {current_rsi:.2f}")
         
-        # Plotting the Chart
+        # Simple Price Chart
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name="Price"))
-        fig.update_layout(height=200, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.error(f"Could not find data for {ticker}")
