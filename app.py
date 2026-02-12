@@ -7,10 +7,10 @@ import plotly.graph_objects as go
 # 1. THE REFRESHED FUNCTION
 def get_data(ticker):
     ticker = ticker.strip()
-    # Download data
-    df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+    # Pulling 1 year of data to ensure the 14-day RSI has plenty of "warmup"
+    df = yf.download(ticker, period="1y", interval="1d", progress=False)
     
-    if df.empty:
+    if df.empty or len(df) < 14:
         return None
 
     # Calculate RSI
@@ -19,7 +19,6 @@ def get_data(ticker):
     # Calculate MACD
     macd = ta.macd(df['Close'], fast=12, slow=26, signal=9)
     
-    # THE FIX: Safely combine the data
     if macd is not None:
         df = pd.concat([df, macd], axis=1)
         
