@@ -34,10 +34,29 @@ tickers = tickers_input.split(',')
 for ticker in tickers:
     data = get_data(ticker)
     
+    # Check if data exists and RSI was calculated
     if data is not None and 'RSI' in data.columns:
-        current_rsi = data['RSI'].iloc[-1]
-        st.subheader(f"Analysis for {ticker}")
-        st.write(f"Current RSI: {current_rsi:.2f}")
+        # THE FIX: .iloc[-1] gets the last row, 
+        # .item() ensures it's a single number, not a "Series"
+        try:
+            last_row_rsi = data['RSI'].iloc[-1]
+            
+            # Handle cases where yfinance returns a multi-index Series
+            if isinstance(last_row_rsi, pd.Series):
+                current_rsi = float(last_row_rsi.iloc[0])
+            else:
+                current_rsi = float(last_row_rsi)
+
+            st.subheader(f"Analysis for {ticker}")
+            
+            # Check if current_rsi is a valid number (not NaN)
+            if pd.isna(current_rsi):
+                st.warning(f"RSI for {ticker} is currently calculating... (Need more data)")
+            else:
+                st.write(f"Current RSI: {current_rsi:.2f}")
+        
+        except Exception as e:
+            st.error(f"Error displaying RSI for {ticker}: {e}")
         
         # Simple Price Chart
         fig = go.Figure()
